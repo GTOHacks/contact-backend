@@ -11,7 +11,6 @@ use std::{
 };
 
 use http_body_util::{
-	combinators::BoxBody,
 	BodyExt,
 	Full,
 };
@@ -20,7 +19,6 @@ use hyper::{
 	body::{
 		Body,
 		Bytes,
-		Frame,
 	},
 	server::conn::http1,
 	service::service_fn,
