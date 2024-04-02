@@ -43,14 +43,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 	let listener = TcpListener::bind(addr).await?;
 
 	loop {
-		let (stream, addr) = listener.accept().await?;
+		let (stream, _addr) = listener.accept().await?;
 
 		let io = TokioIo::new(stream);
 
 		let service = service_fn(move |req| {
-			let addr = addr.clone();
 			async move {
-				match serve(req, addr).await {
+				match serve(req).await {
 					Ok(resp) => Ok::<Response<Full<Bytes>>, Infallible>(resp),
 					Err(e) => {
 						println!("Error in serve: {:?}", e);
@@ -72,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 	}
 }
 
-async fn serve(req: Request<hyper::body::Incoming>, addr: SocketAddr) -> Result<Response<Full<Bytes>>, Box<dyn std::error::Error>> {
+async fn serve(req: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Box<dyn std::error::Error>> {
 	match (req.method(), req.uri().path()) {
 		(&Method::POST, "/contact") => {
 			let max = req.body().size_hint().upper().unwrap_or(u64::MAX);
@@ -94,7 +93,7 @@ async fn serve(req: Request<hyper::body::Incoming>, addr: SocketAddr) -> Result<
 				}
 			};
 
-			match post_comment(data, &format!("{addr}")).await {
+			match post_comment(data).await {
 				Ok(resp) => return Ok(resp),
 				Err(e) => {
 					println!("Error in post_comment: {:?}", e);
@@ -113,7 +112,7 @@ async fn serve(req: Request<hyper::body::Incoming>, addr: SocketAddr) -> Result<
 	}
 }
 
-async fn post_comment(data: Value, ipaddr: &str) -> Result<Response<Full<Bytes>>, Box<dyn std::error::Error>> {
+async fn post_comment(data: Value) -> Result<Response<Full<Bytes>>, Box<dyn std::error::Error>> {
 	let uri: &str = &env::var("WH_URI")?;
 
 	let now = SystemTime::now();
@@ -146,10 +145,6 @@ async fn post_comment(data: Value, ipaddr: &str) -> Result<Response<Full<Bytes>>
 					{
 						"name": "Email",
 						"value": email,
-					},
-					{
-						"name": "IP Address",
-						"value": format!("||{ipaddr}||"),
 					},
 				],
 				"description": message,
